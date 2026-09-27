@@ -1,0 +1,167 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "System user profiles and logins",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "fullName": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "teacherProfileId": { "type": "string" }
+      },
+      "required": ["username", "fullName", "role"]
+    },
+    "teachers": {
+      "title": "Teacher Profiles",
+      "description": "Registered teacher profiles and salary configurations",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "subject": { "type": "string" },
+        "age": { "type": "number" },
+        "birthDate": { "type": "string" },
+        "salaryModel": { "type": "string" },
+        "percentageRate": { "type": "number" },
+        "fixedRate": { "type": "number" },
+        "login": { "type": "string" }
+      },
+      "required": ["fullName", "subject", "salaryModel"]
+    },
+    "cabinets": {
+      "title": "Cabinets",
+      "description": "Classroom cabinets and capacities",
+      "properties": {
+        "id": { "type": "string" },
+        "roomNumber": { "type": "string" },
+        "name": { "type": "string" },
+        "capacity": { "type": "number" }
+      },
+      "required": ["roomNumber", "name"]
+    },
+    "courses": {
+      "title": "Courses",
+      "description": "Educational courses and schedules",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "cabinetId": { "type": "string" },
+        "daysOfWeek": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "monthlyPrice": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["title", "teacherId", "monthlyPrice"]
+    },
+    "students": {
+      "title": "Students",
+      "description": "Student directory and enrollments",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "birthDate": { "type": "string" },
+        "phone": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "fatherPhone": { "type": "string" },
+        "motherName": { "type": "string" },
+        "motherPhone": { "type": "string" },
+        "discountType": { "type": "string" },
+        "discountValue": { "type": "number" },
+        "status": { "type": "string" },
+        "enrolledCourseIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["fullName", "phone"]
+    },
+    "enrollments": {
+      "title": "Enrollments",
+      "description": "Student course enrollment history",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "enrollmentDate": { "type": "string" },
+        "firstMonthLessonsLeft": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["studentId", "courseId"]
+    },
+    "attendance": {
+      "title": "Attendance Records",
+      "description": "Roll call records per lesson",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "courseId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "status": { "type": "string" },
+        "absenceCategory": { "type": "string" },
+        "excusedReason": { "type": "string" },
+        "otherReasonText": { "type": "string" },
+        "adminComment": { "type": "string" },
+        "markedAt": { "type": "string" }
+      },
+      "required": ["date", "courseId", "studentId", "status"]
+    },
+    "payments": {
+      "title": "Payments",
+      "description": "Financial tuition transactions",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "courseId": { "type": "string" },
+        "monthPeriod": { "type": "string" },
+        "isFirstMonth": { "type": "boolean" },
+        "remainingLessonsCount": { "type": "number" },
+        "baseCalculatedAmount": { "type": "number" },
+        "discountApplied": { "type": "number" },
+        "excusedCreditDeduction": { "type": "number" },
+        "finalAmountDue": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "status": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "paidAt": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["studentId", "courseId", "amountPaid"]
+    },
+    "auditLogs": {
+      "title": "Audit Logs",
+      "description": "System activity logs",
+      "properties": {
+        "id": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "actionType": { "type": "string" },
+        "targetEntity": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userName", "actionType", "details"]
+    },
+    "smsLogs": {
+      "title": "SMS Logs",
+      "description": "Outbound SMS notification logs",
+      "properties": {
+        "id": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "phone": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string" },
+        "sentAt": { "type": "string" }
+      },
+      "required": ["phone", "message"]
+    }
+  }
+}

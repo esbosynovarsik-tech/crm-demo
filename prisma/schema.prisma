@@ -1,0 +1,225 @@
+// Prisma Schema for MBS EDUCATION CMS
+// Database: PostgreSQL
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+}
+
+enum SalaryModelType {
+  PERCENTAGE   // % от фактически собранной оплаты учеников
+  FIXED        // Фиксированная ставка (в месяц или за проведенный урок)
+  CONTRACTUAL  // Договорная (гибкая настроечная ставка)
+}
+
+enum AbsenceCategory {
+  UNEXCUSED    // Без причины (оплата не возвращается)
+  EXCUSED      // С причиной (уважительная, автоматический перерасчет)
+}
+
+enum ExcusedReasonType {
+  SICK                  // Заболел
+  TRAVELED_TO_REGION    // Уехал в район
+  EXAM                  // Сдает экзамен
+  FAMILY_CIRCUMSTANCES  // Семейные обстоятельства
+  OTHER                 // Другая причина (с текстом)
+}
+
+enum DiscountType {
+  NONE
+  FIXED_SUM    // Скидка в фиксированной сумме (KZT / тг)
+  PERCENTAGE   // Скидка в процентах %
+}
+
+enum PaymentStatus {
+  PAID          // Оплачено полностью (Зеленый)
+  PARTIAL       // Частичная оплата / Расчет 1-го месяца (Желтый)
+  DEBT          // Задолженность (Красный)
+  RECALCULATED  // Перерассчитано с учетом уважительных пропусков
+}
+
+enum ParentType {
+  STUDENT
+  FATHER
+  MOTHER
+}
+
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  passwordHash String
+  fullName     String
+  role         Role      @default(TEACHER)
+  phone        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  teacherProfile TeacherProfile?
+  auditLogs      AuditLog[]
+}
+
+model TeacherProfile {
+  id             String          @id @default(uuid())
+  userId         String          @unique
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName       String
+  subject        String          // Предмет преподавания (Математика, Английский и т.д.)
+  age            Int
+  birthDate      DateTime        // Дата рождения (для виджета напоминания)
+  salaryModel    SalaryModelType @default(PERCENTAGE)
+  fixedRate      Float?          // Ставка в KZT если FIXED
+  percentageRate Float?          // Процент % если PERCENTAGE
+  contractNotes  String?         // Описание при CONTRACTUAL
+  createdAt      DateTime        @default(now())
+
+  courses        Course[]
+  payrolls       TeacherPayroll[]
+}
+
+model Cabinet {
+  id         String   @id @default(uuid())
+  roomNumber String   @unique // Например: "Кабинет №101"
+  name       String?  // Например: "Лаборатория Эйнштейна"
+  capacity   Int      @default(15)
+  courses    Course[]
+}
+
+model Course {
+  id           String    @id @default(uuid())
+  title        String    // Название курса (например: "ЕГЭ Математика Профиль")
+  subject      String    // Предмет
+  teacherId    String
+  teacher      TeacherProfile @relation(fields: [teacherId], references: [id])
+  cabinetId    String?
+  cabinet      Cabinet?  @relation(fields: [cabinetId], references: [id])
+  daysOfWeek   String[]  // ["ПН", "СР", "ПТ"] или ["ВТ", "ЧТ", "СБ"]
+  startTime    String    // "15:00"
+  endTime      String    // "16:30"
+  monthlyPrice Float     // Полная стоимость курса за 1 календарный месяц (12 уроков)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  enrollments  Enrollment[]
+  attendances  Attendance[]
+  payments     Payment[]
+}
+
+model Student {
+  id            String       @id @default(uuid())
+  fullName      String       // ФИО ученика
+  birthDate     DateTime     // Дата рождения ученика
+  phone         String       // Личный телефон ученика
+  fatherName    String       // ФИО Отца
+  fatherPhone   String       // Телефон Отца
+  motherName    String       // ФИО Матери
+  motherPhone   String       // Телефон Матери
+  discountType  DiscountType @default(NONE)
+  discountValue Float        @default(0) // Сумма или процент скидки
+  status        String       @default("ACTIVE") // ACTIVE, INACTIVE, PAUSED
+  createdAt     DateTime     @default(now())
+
+  enrollments  Enrollment[]
+  attendances  Attendance[]
+  payments     Payment[]
+  smsLogs      SmsLog[]
+}
+
+model Enrollment {
+  id                    String   @id @default(uuid())
+  studentId             String
+  student               Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId              String
+  course                Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  enrollmentDate        DateTime @default(now())
+  firstMonthLessonsLeft Int      @default(12) // Кол-во оставшихся уроков в 1-й месяц
+  status                String   @default("ACTIVE")
+
+  @@unique([studentId, courseId])
+}
+
+model Attendance {
+  id               String            @id @default(uuid())
+  date             String            // Формат "YYYY-MM-DD"
+  courseId         String
+  course           Course            @relation(fields: [courseId], references: [id])
+  studentId        String
+  student          Student           @relation(fields: [studentId], references: [id])
+  teacherId        String
+  status           String            // "PRESENT" или "ABSENT"
+  absenceCategory  AbsenceCategory?  // UNEXCUSED или EXCUSED (если ABSENT)
+  excusedReason    ExcusedReasonType?
+  otherReasonText  String?           // Если причина "OTHER"
+  adminComment     String?           // Комментарий администратора после обзвона родителей
+  markedAt         DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([date, courseId, studentId])
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  studentId             String
+  student               Student       @relation(fields: [studentId], references: [id])
+  courseId              String
+  course                Course        @relation(fields: [courseId], references: [id])
+  monthPeriod           String        // Формат "YYYY-MM" (например, "2026-08")
+  isFirstMonth          Boolean       @default(false)
+  remainingLessonsCount Int           @default(12) // Для расчета 1-го месяца по формуле (Price / 12) * remaining
+  baseCalculatedAmount  Float         // Исходная рассчитанная стоимость
+  discountApplied       Float         @default(0)  // Примененная скидка/льгота
+  excusedCreditDeduction Float        @default(0)  // Вычет за уважительные пропуски
+  finalAmountDue        Float         // Итоговая сумма к оплате
+  amountPaid            Float         @default(0)  // Фактически внесенные средства
+  status                PaymentStatus @default(DEBT)
+  paidAt                DateTime?
+  notes                 String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@unique([studentId, courseId, monthPeriod])
+}
+
+model TeacherPayroll {
+  id                   String   @id @default(uuid())
+  teacherId            String
+  teacher              TeacherProfile @relation(fields: [teacherId], references: [id])
+  monthPeriod          String   // "YYYY-MM"
+  calculatedAmount     Float    // Расчитанная зарплата
+  totalCollectedRef    Float    // Собранные деньги с групп за этот месяц
+  status               String   @default("DRAFT") // DRAFT, APPROVED, PAID
+  paidAt               DateTime?
+  breakdownJson        String?  // JSON с подробным расчетом
+  createdAt            DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  userName     String
+  userRole     Role
+  actionType   String   // "PAYMENT_UPDATE", "ATTENDANCE_MARK", "TEACHER_CREATE", "ADMIN_COMMENT"
+  targetEntity String   // "Payment", "Attendance", "Student"
+  targetId     String?
+  details      String   // Понятный текст выполненного действия
+  createdAt    DateTime @default(now())
+}
+
+model SmsLog {
+  id          String     @id @default(uuid())
+  studentId   String
+  student     Student    @relation(fields: [studentId], references: [id])
+  recipient   String     // Номер телефона
+  parentType  ParentType // FATHER, MOTHER, STUDENT
+  message     String
+  status      String     @default("DELIVERED") // DELIVERED, FAILED
+  sentAt      DateTime   @default(now())
+}
